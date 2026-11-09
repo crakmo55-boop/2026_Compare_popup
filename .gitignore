@@ -1,0 +1,8 @@
+.env
+login/.env
+__pycache__/
+Result/*
+!Result/.gitkeep
+Scratch/*
+!Scratch/.gitkeep
+~$*.xlsx
