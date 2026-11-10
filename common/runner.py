@@ -19,6 +19,7 @@ from pathlib import Path
 
 from common.config import (COUNTRY_PARALLEL, DEFAULT_RETRIES, DIVISIONS, HEADED, MAPPING_FILE, PRODUCT_SET_RULE,
                            RESULT_CHECK, RESULT_DIR, URL_FILE)
+from common.keyspec_page import set_diag_dir
 from common.mapping import MappingError, load_mapping, select_product_sets
 from common.result import ResultWriter, set_rows
 from common.session import SessionError, SessionPool, open_session, setup_logging
@@ -148,6 +149,7 @@ def run_checker(page_type, check_division, output_file, description):
     """Entry Point 공통 main. check_division(session, target, division, sets) -> [row]"""
     log_file = RESULT_DIR / "logs" / f"{Path(output_file).stem}_{datetime.now():%Y%m%d_%H%M%S}.log"
     setup_logging(log_file)
+    set_diag_dir(log_file.with_name(f"{log_file.stem}_diag"))     # 실패 진단 캡처 (실패가 있을 때만 생성)
     args = parse_args(description)
     plan = bootstrap()
     if plan is None:
@@ -162,6 +164,11 @@ def run_checker(page_type, check_division, output_file, description):
         counts[r["Key spec 존재 결과"]] = counts.get(r["Key spec 존재 결과"], 0) + 1
         sku_counts[r["SKU 매칭 결과"]] = sku_counts.get(r["SKU 매칭 결과"], 0) + 1
     logging.info("[DONE] %s %d행 Key spec %s | SKU 매칭 %s", page_type, len(rows), counts, sku_counts)
+    swapped = [r for r in rows if "[Key spec 대체]" in str(r.get("비고", ""))]
+    if swapped:   # Key Specs 가 없어 바꾼 원래 제품 = 결함 후보 (비고 앞부분에 원래 제품·사유가 있음)
+        logging.info("[DONE] Key spec 대체 %d행 (원래 제품은 결함 후보 - 로그의 [KEYSPEC-대체] 줄 참고)", len(swapped))
+        for r in swapped:
+            logging.info("    %s %s %s %s | %s", r["국가"], r["사업부"], r["Set"], r["SKU"], str(r["비고"])[:160])
     return 0
 
 

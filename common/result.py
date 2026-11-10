@@ -44,8 +44,9 @@ _FONT_FAIL = Font(color="9C0006")
 
 
 def sku_match(expected, final_sku) -> str:
-    """mapping table SKU 와 최종 페이지 SKU 비교 (대소문자·앞뒤 공백 무시)."""
-    if not expected or not final_sku:
+    """mapping table SKU 와 최종 페이지 SKU 비교 (대소문자·앞뒤 공백 무시).
+    최종 SKU 를 읽지 못함('' / '-') = 비교 불가 → 확인 필요 (FAIL 로 쓰지 않음)."""
+    if not expected or not final_sku or str(final_sku).strip() in ("-", ""):
         return RESULT_CHECK
     return RESULT_PASS if str(expected).strip().upper() == str(final_sku).strip().upper() else RESULT_FAIL
 
@@ -55,8 +56,10 @@ def country_name(target) -> str:
 
 
 def make_row(target, page_type, product_set, product=None, *, final_text="", final_sku="",
-             http=None, result=RESULT_CHECK, note=""):
-    """page_type 은 결과 열에서 빠졌지만(파일이 Landing / Popup 으로 나뉨) 호출 형태는 유지한다."""
+             http=None, result=RESULT_CHECK, note="", sku_result=None):
+    """page_type 은 결과 열에서 빠졌지만(파일이 Landing / Popup 으로 나뉨) 호출 형태는 유지한다.
+    sku_result: 자동화가 제품을 화면에 띄우지 못해 다른 제품이 보이는 경우 등 '비교 대상이 아님' 을 표시할 때
+                RESULT_CHECK 를 넘긴다 (사이트 SKU 불일치 FAIL 과 구분)."""
     expected = product.rep_model if product else ""
     return {
         COLUMN_COUNTRY: country_name(target),
@@ -67,7 +70,7 @@ def make_row(target, page_type, product_set, product=None, *, final_text="", fin
         "최종 페이지 랜딩 후 제품 텍스트": final_text,
         "SKU": expected,
         "최종 페이지 SKU": final_sku,
-        COLUMN_SKU_MATCH: sku_match(expected, final_sku),
+        COLUMN_SKU_MATCH: sku_result or sku_match(expected, final_sku),
         "HTTP 상태": http,
         COLUMN_KEYSPEC: result,
         "비고": note,
@@ -75,9 +78,14 @@ def make_row(target, page_type, product_set, product=None, *, final_text="", fin
 
 
 def replaced_note(product, replaced) -> str:
-    """대체로 들어간 제품이면 비고 앞에 붙일 문구."""
-    orig = replaced.get(product.rep_model) if product else None
-    return f"[대체] {orig.rep_model} ({orig.fmy_mkt}) 화면에 없음 → 다음 후보 선택 | " if orig else ""
+    """대체로 들어간 제품이면 비고 앞에 붙일 문구.
+    replaced 값: 원래 Product (화면에 없어 대체) 또는 (원래 Product, 사유 문자열) (Key spec 대체 등)"""
+    item = replaced.get(product.rep_model) if product else None
+    if not item:
+        return ""
+    orig, why = item if isinstance(item, tuple) else (item, "화면에 없음")
+    tag = "[Key spec 대체]" if "Key Spec" in why or "팝업" in why else "[대체]"
+    return f"{tag} 원래 제품 {orig.rep_model} ({orig.fmy_mkt}) {why} → 이 제품으로 대체 | "
 
 
 def set_rows(target, page_type, product_set, result, note, http=None):

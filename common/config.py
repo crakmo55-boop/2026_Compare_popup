@@ -53,6 +53,23 @@ SET_CATEGORIES = {
 # Set 당 최대 몇 개 후보까지 시도할지. 0 이면 대체하지 않고 '확인 필요'.
 MAX_ALTERNATES = 10
 
+# Key Spec 대체 (2026-11-10 사용자 지시): 요청 제품에 Key Specs 가 없으면(열 값 없음 / 섹션 미노출 / 새 팝업 미표시)
+# 매핑에서 같은 사업부·같은 Set 카테고리의 다른 제품을 골라 다시 확인한다. 판정 규칙(기존 Key spec 코드)은 그대로이고
+# '어떤 제품을 검증할지' 만 바꾼다. 원래 제품과 사유는 비고·로그([KEYSPEC-대체])에 남겨 결함 추적이 가능하게 한다.
+KEYSPEC_SUBSTITUTE_ROUNDS = 6        # Set 당 Compare 를 다시 여는 최대 횟수 (0 이면 대체하지 않음)
+SET_ATTEMPTS = 2                     # Set 처리 중 예외(페이지 이동으로 컨텍스트 소멸 등) 시 새 Context 로 다시 시도하는 횟수
+POPUP_SET_BUDGET_S = 300             # Popup Set 1개 최대 처리 시간 (초과하면 대체 시도를 멈추고 그때 결과로 기록)
+LANDING_SET_BUDGET_S = 300           # Landing Set 1개 최대 처리 시간
+LANDING_SELECT_BUDGET_S = 75         # Landing 열 1개에 제품 1개를 고르는 최대 시간 (옵션 탐색 포함)
+LANDING_SCAN_MAX = 25                # 이름으로 못 찾을 때 드롭다운 옵션을 직접 골라 SKU 를 확인하는 최대 개수
+DIAG_SCREENSHOTS = 150               # 실패 진단 스크린샷 최대 개수 (실행당, Result/logs/<로그이름>_diag/)
+
+# Landing 이 Popup 과 같은 제품을 검증하도록 (2026-11-10 결정 7-4).
+# True 면 Landing 실행 시 Result 폴더의 최신 Popup 결과(아래 시간 이내)를 읽어, Popup 에서 SKU 까지 확정(SKU 매칭 PASS)된
+# 3개 제품을 그대로 사용한다. Popup 결과가 없거나 3개가 안 되는 Set 은 Landing 이 직접 고른다.
+USE_POPUP_PRODUCTS = True
+POPUP_PRODUCTS_MAX_AGE_HOURS = 24
+
 # 페이지 키 → 매핑 파일 IA_CD 앞 4자리 (CATEGORY_NAME 과 대응)
 #   0101 Mobile > Smartphones / 0102 Mobile > Tablets / 0401 Television > TVs
 #   0803 Home Appliances > Refrigerators / 0801 Home Appliances > Washers and Dryers
@@ -102,6 +119,8 @@ TIMEOUTS = {
     "column_change": 20000,  # 드롭다운 선택 후 열 갱신
     "lazy_load": 10000,      # PF 'View more' 후 카드 추가 로딩
     "click": 10000,          # 버튼 클릭 (가림 요소 해소 대기 포함)
+    "button_ready": 15000,   # PF 체크 후 Compare 버튼에 3개 SKU 가 반영되기까지
+    "keyspec_settle": 6000,  # Compare API 응답 뒤 Key Specs 섹션이 그려지기까지
 }
 
 # ------------------------------------------------------------------ 결과 표시
